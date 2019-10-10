@@ -5,8 +5,15 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 
-float max_vel=1.00;
-geometry_msgs:Twist setpoint_vel;
+float max_vel=1.00,max_val=100;
+geometry_msgs::Twist setpoint_vel, zero_vel;
+setpoint_vel.linear.x = 0;
+setpoint_vel.linear.y = 0;
+setpoint_vel.linear.z = 0;
+setpoint_vel.angular.x = 0;
+setpoint_vel.angular.y = 0;
+setpoint_vel.angular.z = 0;
+zero_vel = setpoint_vel;
 
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg1){
@@ -17,16 +24,17 @@ geometry_msgs::TwistStamped current_vel;
 void vel_cb(const geometry_msgs::TwistStamped::ConstPtr& msg2){
 	current_vel = *msg2;
 }
-
+int update = 0;
 geometry_msgs::Twist current_vel_control;
-void vel_cb(const geometry_msgs::Twist::ConstPtr& msg3){
+void vel_control_cb(const geometry_msgs::Twist::ConstPtr& msg3){
 	current_vel_control = *msg3;
-	setpoint_vel.linear.x = ((current_vel_control.linear.x%100)/100)*max_vel;
-    setpoint_vel.linear.y = ((current_vel_control.linear.y%100)/100)*max_vel;
-    setpoint_vel.linear.z = ((current_vel_control.linear.z%100)/100)*max_vel;
-    setpoint_vel.angular.x = ((current_vel_control.angular.x%100)/100)*max_vel;
-	setpoint_vel.angular.y = ((current_vel_control.angular.y%100)/100)*max_vel;
-	setpoint_vel.angular.z = ((current_vel_control.angular.z%100)/100)*max_vel;
+	setpoint_vel.linear.x = ((current_vel_control.linear.x)/max_value)*max_vel;
+    setpoint_vel.linear.y = ((current_vel_control.linear.y)/max_value)*max_vel;
+    setpoint_vel.linear.z = ((current_vel_control.linear.z)/max_value)*max_vel;
+    setpoint_vel.angular.x = ((current_vel_control.angular.x)/max_value)*max_vel;
+	setpoint_vel.angular.y = ((current_vel_control.angular.y)/max_value)*max_vel;
+	setpoint_vel.angular.z = ((current_vel_control.angular.z)/max_value)*max_vel;
+	update = 1;
 	
 }
 
@@ -41,7 +49,7 @@ int main(int argc, char **argv)
     	    ("/mavros/local_position/velocity", 100, vel_cb);
     ros::Subscriber vel_control_sub = nh.subscribe<geometry_msgs::Twist>
     	    ("/vel_control_topic", 100, vel_control_cb);
-    ros::Publisher vel_pub = nh.advertise<geometry_msgs:Twist>
+    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>
             ("/mavros/setpoint_velocity/cmd_vel_unstamped", 100);
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
@@ -49,7 +57,7 @@ int main(int argc, char **argv)
             ("mavros/set_mode");
 
     //the setpoint publishing rate MUST be faster than 2Hz
-    ros::Rate rate(20.0);
+    ros::Rate rate(40.0);
 
     // wait for FCU connection
     while(ros::ok() && !current_state.connected){
@@ -66,7 +74,7 @@ int main(int argc, char **argv)
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
-        vel_pub.publish(initial_vel);
+        vel_pub.publish(setpoint_vel);
         ros::spinOnce();
         rate.sleep();
     }
@@ -98,8 +106,12 @@ int main(int argc, char **argv)
             }
         }
 
-        vel_pub.publish(setpoint_vel);
-
+        if(update==1){
+        	vel_pub.publish(setpoint_vel);
+        	update = 0;
+		}else{
+			vel_pub.publish(zero_vel);
+		} 
         ros::spinOnce();
         rate.sleep();
     }
