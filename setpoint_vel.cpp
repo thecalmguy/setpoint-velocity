@@ -5,15 +5,8 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 
-float max_vel=1.00,max_val=100;
+float max_vel=1.00,max_value=100;
 geometry_msgs::Twist setpoint_vel, zero_vel;
-setpoint_vel.linear.x = 0;
-setpoint_vel.linear.y = 0;
-setpoint_vel.linear.z = 0;
-setpoint_vel.angular.x = 0;
-setpoint_vel.angular.y = 0;
-setpoint_vel.angular.z = 0;
-zero_vel = setpoint_vel;
 
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg1){
@@ -35,7 +28,7 @@ void vel_control_cb(const geometry_msgs::Twist::ConstPtr& msg3){
 	setpoint_vel.angular.y = ((current_vel_control.angular.y)/max_value)*max_vel;
 	setpoint_vel.angular.z = ((current_vel_control.angular.z)/max_value)*max_vel;
 	update = 1;
-	
+
 }
 
 int main(int argc, char **argv)
@@ -69,8 +62,9 @@ int main(int argc, char **argv)
     setpoint_vel.linear.y = 0;
     setpoint_vel.linear.z = 0;
     setpoint_vel.angular.x = 0;
-	setpoint_vel.angular.y = 0;
-	setpoint_vel.angular.z = 0;
+    setpoint_vel.angular.y = 0;
+    setpoint_vel.angular.z = 0;
+    zero_vel = setpoint_vel;
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
@@ -111,7 +105,7 @@ int main(int argc, char **argv)
         	update = 0;
 		}else{
 			vel_pub.publish(zero_vel);
-		} 
+		}
         ros::spinOnce();
         rate.sleep();
     }
